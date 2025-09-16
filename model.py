@@ -285,12 +285,12 @@ class PSM(nn.Module):
         self.relu_upsample_d1 = nn.ReLU(inplace=True)
         self.decoder2 = nn.Sequential(
             nn.Conv2d(hidden_channels * 2 + in_channels, intermediate_dec2,
-                      kernel_size=(1, 3), padding=(0, 2), dilation=(1, 2), bias=False),
+                      kernel_size=(1, 3), padding=(0, 1), bias=False),
             nn.BatchNorm2d(intermediate_dec2),
             nn.ReLU(inplace=True),
 
             nn.Conv2d(intermediate_dec2, in_channels,
-                      kernel_size=(3, 1), padding=(2, 0), dilation=(2, 1), bias=False),
+                      kernel_size=(3, 1), padding=(1, 0), bias=False),
             nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
         )
@@ -333,10 +333,10 @@ class myModel(nn.Module):
         self.DSSL_module_2 = DSSL()
         self.DSSL_module_3 = DSSL()
 
-        self.OVR1 = PSM(in_channels=96, hidden_channels=48)
-        self.OVR4 = PSM(in_channels=96*2, hidden_channels=48)
-        self.OVR2 = PSM(in_channels=96*2, hidden_channels=48)
-        self.OVR3 = PSM(in_channels=96*2, hidden_channels=48)
+        self.PSM1 = PSM(in_channels=96, hidden_channels=48)
+        self.PSM4 = PSM(in_channels=96*2, hidden_channels=48)
+        self.PSM2 = PSM(in_channels=96*2, hidden_channels=48)
+        self.PSM3 = PSM(in_channels=96*2, hidden_channels=48)
 
         self.res1_0 = nn.Sequential(
             nn.Conv2d(96, 96, kernel_size=(3, 3), padding=(1, 1), bias=False),
@@ -359,21 +359,21 @@ class myModel(nn.Module):
 
         residual1 = self.res1_0(x)                                  # (B, 96, 64, 64)
         
-        x = self.OVR1(x)                                            # (B, 96, 64, 64)
+        x = self.PSM1(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
         
         residual1 = self.DSSL_module(residual1)
-        x = self.OVR2(x)                                            # (B, 96, 64, 64)
+        x = self.PSM2(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
         
         residual1 = self.DSSL_module_3(residual1)
-        x = self.OVR3(x)                                            # (B, 96, 64, 64)
+        x = self.PSM3(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
 
         residual1_rd = self.ASD(x)                                  # (B, 96*2, 64, 64)
-        out_ovr4 = self.OVR4(x)                                     # (B, 96*2, 64, 64)
+        out_PSM4 = self.PSM4(x)                                     # (B, 96*2, 64, 64)
 
-        out = out_ovr4*residual1_rd
+        out = out_PSM4*residual1_rd
         out = self.relu(self.bn_upsample_final1(self.upsample_final1(out)))  # (B, 96, 256, 256)
         out = self.final_classification_conv(out)                            # (B, num_classes, 256, 256)
 
