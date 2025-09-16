@@ -266,12 +266,12 @@ class PSM(nn.Module):
         self.relu_upsample_e2 = nn.ReLU(inplace=True)
         self.decoder1 = nn.Sequential(
             nn.Conv2d(bottleneck_channels * 2 + hidden_channels * 2, intermediate_dec1,
-                      kernel_size=(1, 3), padding=(0, 2), dilation=(1, 2), bias=False),
+                      kernel_size=(1, 3), padding=(0, 1), bias=False),
             nn.BatchNorm2d(intermediate_dec1),
             nn.ReLU(inplace=True),
 
             nn.Conv2d(intermediate_dec1, hidden_channels * 2,
-                      kernel_size=(3, 1), padding=(2, 0), dilation=(2, 1), bias=False),
+                      kernel_size=(3, 1), padding=(1, 0), bias=False),
             nn.BatchNorm2d(hidden_channels * 2),
             nn.ReLU(inplace=True),
         )
