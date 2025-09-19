@@ -318,9 +318,9 @@ class PSM(nn.Module):
         out = self.relu(self.bn(self.conv3(out)))
         return out
         
-class myModel(nn.Module):
+class ASTRANet(nn.Module):
     def __init__(self, num_classes):
-        super(myModel, self).__init__()
+        super(ASTRANet, self).__init__()
 
         self.conv3x3 = nn.Conv2d(3, 96*2, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn_initial = nn.BatchNorm2d(96*2)
@@ -329,22 +329,17 @@ class myModel(nn.Module):
         self.conv3x3_2 = nn.Conv2d(96*2, 96, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn_initial_2 = nn.BatchNorm2d(96)
 
-        self.DSSL_module = DSSL()
-        self.DSSL_module_2 = DSSL()
-        self.DSSL_module_3 = DSSL()
+        self.DSSL1 = DSSL()
+        self.DSSL2 = DSSL()
+        self.DSSL3 = DSSL()
 
         self.PSM1 = PSM(in_channels=96, hidden_channels=48)
-        self.PSM4 = PSM(in_channels=96*2, hidden_channels=48)
         self.PSM2 = PSM(in_channels=96*2, hidden_channels=48)
         self.PSM3 = PSM(in_channels=96*2, hidden_channels=48)
+        self.PSM4 = PSM(in_channels=96*2, hidden_channels=48)
 
-        self.res1_0 = nn.Sequential(
-            nn.Conv2d(96, 96, kernel_size=(3, 3), padding=(1, 1), bias=False),
-            nn.BatchNorm2d(96),
-            nn.ReLU(inplace=True),
-            ASD(channels=96),
-        )
-        self.ASD = ASD(channels=96*2)
+        self.ASD1 = ASD(channels=96)
+        self.ASD2 = ASD(channels=96*2)
 
         self.upsample_final1 = nn.ConvTranspose2d(96, 96, kernel_size=4, stride=4, padding=0, bias=False)
         self.bn_upsample_final1 = nn.BatchNorm2d(96)
@@ -355,22 +350,22 @@ class myModel(nn.Module):
         # Input: (B, 3, 256, 256)
         x = self.relu(self.bn_initial(self.conv3x3(x)))             # (B, 96, 128, 128)
         x = self.relu(self.bn_initial_2(self.conv3x3_2(x)))         # (B, 96, 64, 64)
-        x = self.DSSL_module_2(x)
+        x = self.DSSL1(x)
 
-        residual1 = self.res1_0(x)                                  # (B, 96, 64, 64)
+        residual1 = self.ASD1(x)                                  # (B, 96, 64, 64)
         
         x = self.PSM1(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
         
-        residual1 = self.DSSL_module(residual1)
+        residual1 = self.DSSL2(residual1)
         x = self.PSM2(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
         
-        residual1 = self.DSSL_module_3(residual1)
+        residual1 = self.DSSL3(residual1)
         x = self.PSM3(x)                                            # (B, 96, 64, 64)
         x = torch.cat([x, residual1], dim=1)                        # (B, 96*2, 64, 64)
 
-        residual1_rd = self.ASD(x)                                  # (B, 96*2, 64, 64)
+        residual1_rd = self.ASD2(x)                                  # (B, 96*2, 64, 64)
         out_PSM4 = self.PSM4(x)                                     # (B, 96*2, 64, 64)
 
         out = out_PSM4*residual1_rd
@@ -395,7 +390,7 @@ print(f"Train size: {len(train_dataset)}, Validation size: {len(val_dataset)}")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 classes = 4
-model = myModel(classes)
+model = ASTRANet(classes)
 def count_parameters(model):  
     return sum(p.numel() for p in model.parameters())
 total_params = count_parameters(model)
@@ -403,7 +398,7 @@ print(f"Total parameters: {total_params}")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 num_classes = len(classes) if isinstance(classes, list) else classes 
-model = myModel(num_classes)
+model = ASTRANet(num_classes)
 model = model.to(device)
 model = nn.DataParallel(model)
 criterion = nn.CrossEntropyLoss()
